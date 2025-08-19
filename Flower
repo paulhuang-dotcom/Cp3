@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>输入特定文字就全屏幕下花 🌸</title>
+  <style>
+    :root {
+      --bg: #0f1226;
+      --card: #171a33cc;
+      --accent: #8b5cf6;
+      --text: #e5e7eb;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 10% -10%, #1c1f3f, transparent),
+                  radial-gradient(1200px 800px at 110% -20%, #241d49, transparent),
+                  var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .wrap {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: min(720px, 92vw);
+      background: var(--card);
+      border: 1px solid #2a2f53;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      backdrop-filter: blur(8px) saturate(120%);
+    }
+
+    h1 { 
+      margin: 0 0 6px; 
+      font-size: clamp(20px, 3.6vw, 28px); 
+      letter-spacing: .4px; 
+    }
+    p { margin: 6px 0 16px; color: #c7cbe6; }
+
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr auto; align-items: center; }
+
+    input[type="text"] {
+      width: 100%;
+      background: #0e1024;
+      border: 1px solid #30345f;
+      color: var(--text);
+      padding: 14px 16px;
+      border-radius: 14px;
+      outline: none;
+      font-size: 16px;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #8b5cf633; }
+
+    button {
+      background: linear-gradient(135deg, var(--accent), #22d3ee);
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 14px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform .08s ease;
+      white-space: nowrap;
+    }
+    button:active { transform: translateY(1px); }
+
+    .hint { font-size: 13px; color: #a6abda; }
+    .hint code { background: #0e1024; padding: 2px 6px; border-radius: 6px; border: 1px solid #2b2f57; }
+
+    /* 全屏“下花”容器 */
+    .shower {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 9999;
+    }
+
+    .petal {
+      position: absolute;
+      top: -10vh;
+      font-size: 24px; /* 将在脚本中覆盖为随机大小 */
+      will-change: transform, opacity;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,.25));
+      animation-name: fall, sway;
+      animation-timing-function: linear, ease-in-out;
+      animation-iteration-count: 1, infinite;
+    }
+
+    @keyframes fall {
+      0%   { transform: translate3d(var(--x,0), -10vh, 0) rotate(var(--r,0)); opacity: 0; }
+      10%  { opacity: 1; }
+      100% { transform: translate3d(var(--x,0), 110vh, 0) rotate(calc(var(--r,0) + 540deg)); opacity: 0; }
+    }
+    @keyframes sway {
+      0%, 100% { margin-left: 0; }
+      50% { margin-left: 24px; }
+    }
+
+    .toast {
+      position: fixed; left: 50%; top: 20px; transform: translateX(-50%);
+      background: #11132a; border: 1px solid #2a2f53; color: #e5e7eb;
+      padding: 10px 14px; border-radius: 10px; opacity: 0; pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+      z-index: 10000;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>输入特定文字 → 全屏幕下花 🌸</h1>
+      <p>在输入框里输入任意一个触发词，然后按 <b>回车</b> 或点右侧按钮，就会触发全屏花朵/彩带 Emoji 雨。</p>
+      <div class="row">
+        <input id="triggerInput" type="text" placeholder="试试输入：下花 / 撒花 / 🎉" />
+        <button id="goBtn" title="触发下花">开始下花</button>
+      </div>
+      <p class="hint">可在脚本顶部修改 <code>TRIGGERS</code>（触发词）和 <code>EMOJIS</code>（下什么）来定制效果；也可以改 <code>DURATION_MS</code> 和 <code>DENSITY</code> 控制持续时长和密度。</p>
+    </div>
+  </div>
+
+  <div id="shower" class="shower" aria-hidden="true"></div>
+  <div id="toast" class="toast" role="status">已触发：全屏下花！</div>
+
+  <script>
+    // === 自定义区域 ===
+    const TRIGGERS = ["下花", "撒花", "🎉", "花雨"]; // 触发词
+    const EMOJIS   = ["🌸","🌼","🌺","💐","🌷","🌻","✨","🎉"]; // 下什么
+
+    const DURATION_MS = 5000;   // 连续生成的持续时间（毫秒）
+    const DENSITY     = 20;     // 每 100ms 生成的数量（数字越大越密集）
+    const MIN_SIZE    = 18;     // Emoji 最小字号（px）
+    const MAX_SIZE    = 42;     // Emoji 最大字号（px）
+
+    // === 逻辑实现 ===
+    const $input  = document.getElementById('triggerInput');
+    const $btn    = document.getElementById('goBtn');
+    const $shower = document.getElementById('shower');
+    const $toast  = document.getElementById('toast');
+
+    function norm(str){ return (str||"").trim(); }
+    function shouldTrigger(v){
+      const s = norm(v);
+      return s && TRIGGERS.some(t => s === String(t));
+    }
+
+    function toast(msg){
+      $toast.textContent = msg;
+      $toast.classList.add('show');
+      setTimeout(()=> $toast.classList.remove('show'), 1200);
+    }
+
+    function rand(min, max){ return Math.random() * (max - min) + min; }
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    function spawnOne(){
+      const el = document.createElement('span');
+      el.className = 'petal';
+      el.textContent = pick(EMOJIS);
+
+      // 随机横向位置和大小/时长/延迟
+      const left = rand(0, 100); // vw
+      const size = rand(MIN_SIZE, MAX_SIZE);
+      const fallDur = rand(3.2, 7.5); // 秒
+      const delay   = rand(0, 2.5);   // 秒
+      const rotSeed = rand(-180, 180) + 'deg';
+
+      el.style.left = left + 'vw';
+      el.style.fontSize = size + 'px';
+      el.style.setProperty('--x', '0');
+      el.style.setProperty('--r', rotSeed);
+      el.style.animationDuration = fallDur + 's, ' + rand(2.0, 3.5) + 's';
+      el.style.animationDelay = delay + 's, 0s';
+
+      // 结束后移除，避免 DOM 膨胀
+      el.addEventListener('animationend', () => el.remove());
+
+      $shower.appendChild(el);
+    }
+
+    function startShower(){
+      const startedAt = Date.now();
+      toast('已触发：全屏下花！');
+
+      // 在持续时间内，每 100ms 生成 DENSITY 个
+      const iv = setInterval(() => {
+        const elapsed = Date.now() - startedAt;
+        if (elapsed > DURATION_MS) { clearInterval(iv); return; }
+        for (let i=0;i<DENSITY;i++) spawnOne();
+      }, 100);
+    }
+
+    // 输入交互：按回车或者点击按钮，匹配触发词就开下花
+    $input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        if (shouldTrigger($input.value)) startShower();
+        else toast('未匹配触发词，可修改 TRIGGERS');
+        $input.select();
+      }
+    });
+
+    $btn.addEventListener('click', () => {
+      if (shouldTrigger($input.value)) startShower();
+      else toast('未匹配触发词，可修改 TRIGGERS');
+      $input.focus();
+      $input.select();
+    });
+
+    // 小彩蛋：输入框获得焦点时，按下 Ctrl/Cmd + J 直接触发
+    $input.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'j')) {
+        e.preventDefault();
+        startShower();
+      }
+    });
+  </script>
+</body>
+</html>
