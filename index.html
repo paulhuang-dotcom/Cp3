@@ -123,10 +123,10 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>输入特定文字 → 全屏幕下花 🌸</h1>
-      <p>在输入框里输入任意一个触发词，然后按 <b>回车</b> 或点右侧按钮，就会触发全屏花朵/彩带 Emoji 雨。</p>
+      <h1>输入你的生日 🎂</h1>
+      <p>输入一下你的生日</p>
       <div class="row">
-        <input id="triggerInput" type="text" placeholder="试试输入：下花 / 撒花 / 🎉" />
+        <input id="triggerInput" type="text" placeholder="试试输入：你的生日 "0817" />
         <button id="goBtn" title="触发下花">开始下花</button>
       </div>
       <p class="hint">可在脚本顶部修改 <code>TRIGGERS</code>（触发词）和 <code>EMOJIS</code>（下什么）来定制效果；也可以改 <code>DURATION_MS</code> 和 <code>DENSITY</code> 控制持续时长和密度。</p>
@@ -138,7 +138,7 @@
 
   <script>
     // === 自定义区域 ===
-    const TRIGGERS = ["下花", "撒花", "🎉", "花雨"]; // 触发词
+    const TRIGGERS = ["下花", "撒花", "🎉", "花雨","0817"]; // 触发词
     const EMOJIS   = ["🌸","🌼","🌺","💐","🌷","🌻","✨","🎉"]; // 下什么
 
     const DURATION_MS = 5000;   // 连续生成的持续时间（毫秒）
